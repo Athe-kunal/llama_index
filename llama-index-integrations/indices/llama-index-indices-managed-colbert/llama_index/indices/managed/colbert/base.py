@@ -1,4 +1,5 @@
 import os
+import torch
 import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
@@ -175,13 +176,26 @@ class ColbertIndex(BaseIndex[IndexDict]):
         colbert_index.store = searcher
         return colbert_index
 
-    def query(self, query_str: str, top_k: int = 10) -> List[NodeWithScore]:
+    def query(
+        self, query_str: str, top_k: int = 10, relevant_ids: List[int] = []
+    ) -> List[NodeWithScore]:
         """
         Query the Colbert v2 + Plaid store.
 
         Returns: list of NodeWithScore.
         """
-        doc_ids, _, scores = self.store.search(text=query_str, k=top_k)
+        if relevant_ids != []:
+            relevant_ids_tensor = torch.tensor(relevant_ids).to("cuda:0")
+            doc_ids, _, scores = self.store.search(
+                text=query_str,
+                k=top_k,
+                filter_fn=lambda pids: torch.tensor(
+                    [pid for pid in pids if pid in relevant_ids_tensor],
+                    dtype=torch.int32,
+                ).to("cuda:0"),
+            )
+        else:
+            doc_ids, _, scores = self.store.search(text=query_str, k=top_k)
 
         node_doc_ids = [self._docs_pos_to_node_id[id] for id in doc_ids]
         nodes = self.docstore.get_nodes(node_doc_ids)

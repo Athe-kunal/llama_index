@@ -34,8 +34,7 @@ class Node(BaseModel):
     node_type: NodeType = Field(
         default=NodeType.FILE,
         description=(
-            "Either a file or folder, use the name to determine which it"
-            " could be"
+            "Either a file or folder, use the name to determine which it" " could be"
         ),
     )
 
